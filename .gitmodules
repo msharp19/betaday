@@ -1,0 +1,9 @@
+[submodule "tests/lib/openzeppelin-contracts"]
+	path = tests/lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "tests/lib/openzeppelin-contracts-upgradeable"]
+	path = tests/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/openzeppelin/openzeppelin-contracts-upgradeable
+[submodule "tests/lib/chainlink"]
+	path = tests/lib/chainlink
+	url = https://github.com/smartcontractkit/chainlink

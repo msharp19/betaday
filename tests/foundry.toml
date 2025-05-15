@@ -1,0 +1,25 @@
+[profile.default]
+src = "../contracts"
+out = "out"
+libs = ["lib"]
+allow_paths = [".."]  # Allows looking outside src
+
+remappings = [
+    '@openzeppelin-contracts/=lib/openzeppelin-contracts/',
+	'@openzeppelin/contracts-upgradeable/proxy/=lib/openzeppelin-contracts-upgradeable/contracts/proxy/',
+	'@openzeppelin/contracts-upgradeable/utils/=lib/openzeppelin-contracts-upgradeable/contracts/utils/',
+	'@openzeppelin/contracts-upgradeable/access/=lib/openzeppelin-contracts-upgradeable/contracts/access/',
+	'@openzeppelin/contracts-upgradeable/token/=lib/openzeppelin-contracts-upgradeable/contracts/token/',
+	'@openzeppelin/contracts-upgradeable/security/=lib/openzeppelin-contracts-upgradeable/contracts/utils/',
+    '@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/',
+	'@openzeppelin/contracts/proxy/=lib/openzeppelin-contracts/contracts/proxy/',
+	'@openzeppelin/contracts/utils/=lib/openzeppelin-contracts/contracts/utils/',	
+	'@openzeppelin/contracts/interfaces/=lib/openzeppelin-contracts/contracts/interfaces/',	
+	'@openzeppelin/contracts/access/=lib/openzeppelin-contracts/contracts/access/',	
+	'@openzeppelin/contracts/token/=lib/openzeppelin-contracts/contracts/token/',
+	'@chainlink/contracts/src/v0.8/interfaces=lib/chainlink/contracts/src/v0.8/shared/interfaces',
+    '@betaday/=../contracts/',
+	'@betaday/=lib/betaday/'
+]
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
