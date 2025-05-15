@@ -47,13 +47,11 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
 
     function addMarket(
         address _conditionAsset,
-        int256 _upConditionPercent,
-        int256 _downConditionPercent,
+        int256 _conditionPercent,
         uint256 _resolvesAt
     ) external nonReentrant returns(uint256 marketId) {
         require(isConditionalAssetSupported(_conditionAsset), "Unsupported asset");
-        require(_upConditionPercent >= 100, "Up condition too low"); // Minimum 1%
-        require(_downConditionPercent >= 100, "Down condition too low");
+        require(_conditionPercent >= 100, "Condition too low"); // Minimum 1%
         require(_resolvesAt > block.timestamp + 24 hours, "Resolution too soon");
 
         AppStorage storage $ = _appStorage();
@@ -66,7 +64,7 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
         market.createdPrice = price;
         market.createdAt = block.timestamp;
         market.resolvesAt = _resolvesAt;
-        market.upConditionPercent = _upConditionPercent;
+        market.conditionPercent = _conditionPercent;
 
         emit MarketAdded(marketId, block.timestamp);
         return marketId;
@@ -83,8 +81,8 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
         int256 currentPrice = getAssetPrice(market.conditionAsset);
         int256 percentMoved = _getPercentMoved(market.createdPrice, currentPrice);
         
-        market.upWins = percentMoved > market.upConditionPercent;
-        market.downWins = percentMoved < -market.upConditionPercent;
+        market.upWins = percentMoved > market.conditionPercent;
+        market.downWins = percentMoved < -market.conditionPercent;
         if(market.upWins || market.downWins)
         {
             uint256 totalLosingBets = market.upWins ? market.downTotalBets : market.upTotalBets;     
@@ -116,31 +114,33 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
         
         if (isUpBet) {
             market.upTotalBets += amount;
-            market.userBets[_msgSender()] += int256(amount);
+            market.userBets[_msgSender()].upBets += int256(amount);
         } else {
             market.downTotalBets += amount;
-            market.userBets[_msgSender()] -= int256(amount);
+            market.userBets[_msgSender()].downBets -= int256(amount);
         }
 
         emit BetPlaced(marketId, _msgSender(), isUpBet, amount);
+
         return true;
     }
 
     function collectWinnings(uint256 marketId) external nonReentrant returns(uint256) {
         AppStorage storage $ = _appStorage();
         Market storage market = $.markets[marketId];
-        
-        require(market.resolved, "Market not resolved");
-        require(market.userBets[_msgSender()] != 0, "No bets placed");
 
-        bool isUpWinner = market.upWins && market.userBets[_msgSender()] > 0;
-        bool isDownWinner = market.downWins && market.userBets[_msgSender()] < 0;
+        require(market.resolved, "Market not resolved");
+        require(market.userBets[_msgSender()].upBets != 0 || market.userBets[_msgSender()].downBets != 0, "No bets placed");
+
+        bool isUpWinner = market.upWins && market.userBets[_msgSender()].upBets > 0;
+        bool isDownWinner = market.downWins && market.userBets[_msgSender()].downBets < 0;
         
         if(!isUpWinner && !isDownWinner)
         {
             // Return funds
-            uint256 userBetToReturn = uint256(abs(market.userBets[_msgSender()]));
-            market.userBets[_msgSender()] = 0;
+            uint256 userBetToReturn = uint256(abs(market.userBets[_msgSender()].upBets)) + uint256(abs(market.userBets[_msgSender()].downBets));
+            market.userBets[_msgSender()].upBets = 0;
+            market.userBets[_msgSender()].downBets = 0;
             IERC20($.asset).transfer(_msgSender(), userBetToReturn);
 
             emit BetReturned(marketId, _msgSender(), userBetToReturn);
@@ -150,12 +150,13 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
 
         uint256 totalWinnerBets = market.upWins ? market.upTotalBets : market.downTotalBets;
         uint256 totalLoserBets = market.upWins ? market.downTotalBets : market.upTotalBets;
-        uint256 userBet = uint256(abs(market.userBets[_msgSender()]));
+        uint256 userBet = market.upWins ? uint256(abs(market.userBets[_msgSender()].upBets)) : uint256(abs(market.userBets[_msgSender()].downBets));
         
         uint256 netPot = totalLoserBets - market.resolverPayout - market.housePayout;
         uint256 amount = (userBet * netPot) / totalWinnerBets;
         
-        market.userBets[_msgSender()] = 0;
+        market.userBets[_msgSender()].upBets = 0;
+        market.userBets[_msgSender()].downBets = 0;
         IERC20($.asset).transfer(_msgSender(), amount);
 
         emit WinningsCollected(marketId, _msgSender(), amount);
@@ -200,7 +201,7 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
             market.resolved, 
             market.resolvedBy, 
             market.conditionAsset,
-            market.upConditionPercent, 
+            market.conditionPercent, 
             market.upTotalBets, 
             market.downTotalBets, 
             market.upWins, 
@@ -210,11 +211,12 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
         );
     }
 
-    function getUsersMarketBet(uint256 marketId, address user) external view returns(int256 amount)
+    function getUsersMarketBet(uint256 marketId, address user) external view returns(int256 upBets, int256 downBets)
     {
         Market storage market = _appStorage().markets[marketId];
         
-        amount = market.userBets[user];
+        upBets = market.userBets[user].upBets;
+        downBets = market.userBets[user].downBets;
     }
 
     function isConditionalAssetSupported(address asset) public view returns(bool) {

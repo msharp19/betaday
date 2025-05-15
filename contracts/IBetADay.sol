@@ -19,14 +19,19 @@ interface IBetADay{
         bool resolved;
         address resolvedBy;
         address conditionAsset;
-        int256 upConditionPercent;
+        int256 conditionPercent;
         uint256 upTotalBets;
         uint256 downTotalBets;
         bool upWins;
         bool downWins;
         uint256 resolverPayout;
         uint256 housePayout;
-        mapping(address => int256) userBets;
+        mapping(address => Bet) userBets;
+    }
+
+    struct Bet {
+        int256 upBets;
+        int256 downBets;
     }
 
     struct SupportedAsset {
@@ -52,8 +57,7 @@ interface IBetADay{
 
     function addMarket(
         address _conditionAsset,
-        int256 _upConditionPercent,
-        int256 _downConditionPercent,
+        int256 _conditionPercent,
         uint256 _resolvesAt
     ) external returns(uint256 marketId);
     function resolveMarket(uint256 marketId) external;
@@ -64,7 +68,7 @@ interface IBetADay{
     ) external returns(bool);
     function collectWinnings(uint256 marketId) external returns(uint256);
     function getAssetPrice(address asset) external view returns(int256);
-    function getUsersMarketBet(uint256 marketId, address user) external view returns(int256 amount);
+    function getUsersMarketBet(uint256 marketId, address user) external view returns(int256 upBets, int256 downBets);
     function getMarket(uint256 marketId) external view returns(
         int256 createdPrice,
         uint256 createdAt,

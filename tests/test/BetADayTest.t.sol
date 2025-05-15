@@ -55,17 +55,149 @@ contract BetADayTest is Test
         );
 
         betADay = BetADay(address(proxy));
-
-        // Add supported tokens
-        betADay.addConditionalSupportedAsset(MOCK_SUPPORTED_ASSET_1, MOCK_SUPPORTED_ASSET_ORACLE_1);
-        betADay.addConditionalSupportedAsset(MOCK_SUPPORTED_ASSET_2, MOCK_SUPPORTED_ASSET_ORACLE_2);
     }
     
-    
-    function test_do(uint256 x) public {
-        //counter.setNumber(x);
-        //assertEq(counter.number(), x);
+    function test_addConditionalSupportedAsset() public 
+    {
+        betADay.addConditionalSupportedAsset(MOCK_SUPPORTED_ASSET_1, MOCK_SUPPORTED_ASSET_ORACLE_1);
 
-        
+        assertTrue(betADay.isConditionalAssetSupported(MOCK_SUPPORTED_ASSET_1), "Market should exist");
+        assertFalse(betADay.isConditionalAssetSupported(MOCK_SUPPORTED_ASSET_2), "Market should NOT exist");
+    }
+
+    function test_addMarket() public 
+    {
+        _addSupportedAssets();
+
+        int256 movementPercent = 1000; // 10%
+        uint256 betExpiry = block.timestamp + 48 hours;
+
+        vm.prank(user1);
+
+        uint256 marketId = betADay.addMarket(MOCK_SUPPORTED_ASSET_1, movementPercent, betExpiry);
+
+        (int256 createdPrice,
+        uint256 createdAt,
+        uint256 resolvesAt,
+        bool resolved,
+        address resolvedBy,
+        address conditionAsset,
+        int256 conditionPercent,
+        uint256 upTotalBets,
+        uint256 downTotalBets,
+        bool upWins,
+        bool downWins,
+        uint256 resolverPayout,
+        uint256 housePayout) = betADay.getMarket(marketId);
+
+        assertEq(createdPrice, 150000000000, "Created price should be at 150000000000");
+        assertEq(createdAt, block.timestamp, "Created should be now");
+        assertEq(resolvesAt, betExpiry, "Created should be now + 48h");
+        assertFalse(resolved, "Should not be resolved yet");
+        assertEq(resolvedBy, address(0), "Resolved by should not be populated");
+        assertEq(conditionAsset, MOCK_SUPPORTED_ASSET_1, "Condition asset should be MOCK_SUPPORTED_ASSET_1");
+        assertEq(conditionPercent, movementPercent, "Movement percent should be 1000 (10%)");
+        assertEq(upTotalBets, 0, "There should be no up bets");
+        assertEq(downTotalBets, 0, "There should be no down bets");
+        assertFalse(upWins, "Up wins should not be set (defaults to false)");
+        assertFalse(downWins, "Down wins should not be set (defaults to false)");
+        assertEq(resolverPayout, 0, "Resolver should not have been paid");
+        assertEq(housePayout, 0, "House should not have been paid");
+    }
+
+    function test_addMarket_2() public 
+    {
+        _addSupportedAssets();
+
+        int256 movementPercent = 2000; // 20%
+        uint256 betExpiry = block.timestamp + 96 hours;
+
+        vm.prank(user1);
+
+        uint256 marketId = betADay.addMarket(MOCK_SUPPORTED_ASSET_2, movementPercent, betExpiry);
+
+        (int256 createdPrice,
+        uint256 createdAt,
+        uint256 resolvesAt,
+        bool resolved,
+        address resolvedBy,
+        address conditionAsset,
+        int256 conditionPercent,
+        uint256 upTotalBets,
+        uint256 downTotalBets,
+        bool upWins,
+        bool downWins,
+        uint256 resolverPayout,
+        uint256 housePayout) = betADay.getMarket(marketId);
+
+        assertEq(createdPrice, 300000000000, "Created price should be at 300000000000");
+        assertEq(createdAt, block.timestamp, "Created should be now");
+        assertEq(resolvesAt, betExpiry, "Created should be now + 96h");
+        assertFalse(resolved, "Should not be resolved yet");
+        assertEq(resolvedBy, address(0), "Resolved by should not be populated");
+        assertEq(conditionAsset, MOCK_SUPPORTED_ASSET_2, "Condition asset should be MOCK_SUPPORTED_ASSET_2");
+        assertEq(conditionPercent, movementPercent, "Movement percent should be 2000 (20%)");
+        assertEq(upTotalBets, 0, "There should be no up bets");
+        assertEq(downTotalBets, 0, "There should be no down bets");
+        assertFalse(upWins, "Up wins should not be set (defaults to false)");
+        assertFalse(downWins, "Down wins should not be set (defaults to false)");
+        assertEq(resolverPayout, 0, "Resolver should not have been paid");
+        assertEq(housePayout, 0, "House should not have been paid");
+    }
+
+    function test_placeBet_up() public 
+    {
+        _addSupportedAssets();
+
+        MockERC20(MOCK_ASSET).mint(user1, 2 ether);
+
+        int256 movementPercent = 1000; // 10%
+        uint256 betExpiry = block.timestamp + 48 hours;
+
+        uint256 marketId = betADay.addMarket(MOCK_SUPPORTED_ASSET_1, movementPercent, betExpiry);
+
+        vm.prank(user1);
+        MockERC20(MOCK_ASSET).approve(address(betADay), 2 ether);
+
+        vm.prank(user1);
+        betADay.placeBet(marketId, true, 2 ether);
+
+        (int256 createdPrice,
+        uint256 createdAt,
+        uint256 resolvesAt,
+        bool resolved,
+        address resolvedBy,
+        address conditionAsset,
+        int256 conditionPercent,
+        uint256 upTotalBets,
+        uint256 downTotalBets,
+        bool upWins,
+        bool downWins,
+        uint256 resolverPayout,
+        uint256 housePayout) = betADay.getMarket(marketId);
+
+        assertEq(createdPrice, 150000000000, "Created price should be at 150000000000");
+        assertEq(createdAt, block.timestamp, "Created should be now");
+        assertEq(resolvesAt, betExpiry, "Created should be now + 48h");
+        assertFalse(resolved, "Should not be resolved yet");
+        assertEq(resolvedBy, address(0), "Resolved by should not be populated");
+        assertEq(conditionAsset, MOCK_SUPPORTED_ASSET_1, "Condition asset should be MOCK_SUPPORTED_ASSET_1");
+        assertEq(conditionPercent, movementPercent, "Movement percent should be 1000 (10%)");
+        assertEq(upTotalBets, 2 ether, "There should be 2 ether in up bets");
+        assertEq(downTotalBets, 0, "There should be no down bets");
+        assertFalse(upWins, "Up wins should not be set (defaults to false)");
+        assertFalse(downWins, "Down wins should not be set (defaults to false)");
+        assertEq(resolverPayout, 0, "Resolver should not have been paid");
+        assertEq(housePayout, 0, "House should not have been paid");
+
+        (int256 userUpBetForMarket, int256 userDownBetForMarket) = betADay.getUsersMarketBet(marketId, user1);
+        assertEq(userUpBetForMarket, 2 ether, "The users up bet should equal 2 Ether");
+        assertEq(userDownBetForMarket, 0, "The users down bet should equal 0 Ether");
+    }
+
+    function _addSupportedAssets() internal 
+    {
+        betADay.addConditionalSupportedAsset(MOCK_SUPPORTED_ASSET_1, MOCK_SUPPORTED_ASSET_ORACLE_1);
+        betADay.addConditionalSupportedAsset(MOCK_SUPPORTED_ASSET_2, MOCK_SUPPORTED_ASSET_ORACLE_2);
     }
 }
