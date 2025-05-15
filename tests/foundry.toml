@@ -19,7 +19,7 @@ remappings = [
 	'@openzeppelin/contracts/token/=lib/openzeppelin-contracts/contracts/token/',
 	'@chainlink/contracts/src/v0.8/interfaces=lib/chainlink/contracts/src/v0.8/shared/interfaces',
     '@betaday/=../contracts/',
-	'@betaday/=lib/betaday/'
+	'@betaday-mocks/=lib/betaday/'
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

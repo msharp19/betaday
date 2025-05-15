@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./IBetADay.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
@@ -10,46 +11,9 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract BetADay is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, UUPSUpgradeable {
-    struct Market {
-        int256 createdPrice;
-        uint256 createdAt;
-        uint256 resolvesAt;
-        bool resolved;
-        address resolvedBy;
-        address conditionAsset;
-        int256 upConditionPercent;
-        uint256 upTotalBets;
-        uint256 downTotalBets;
-        bool upWins;
-        bool downWins;
-        uint256 resolverPayout;
-        uint256 housePayout;
-        mapping(address => int256) userBets;
-    }
-
-    struct SupportedAsset {
-        bool isSupported;
-        address oracleAddress;
-    }
-
-    struct AppStorage {
-        address asset;
-        uint256 nextMarketId;
-        uint256 houseRakePercent; // Basis points (100 = 1%)
-        address houseRakeReceiver;
-        uint256 resolverPercent; // Basis points
-        mapping(uint256 => Market) markets;
-        mapping(address => SupportedAsset) supportedConditionalAssets;
-    }
-
+contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, UUPSUpgradeable 
+{   
     bytes32 private constant AppStorageSlot = 0x078b9a5a10e60aff8f55e9477cc53791735a7ce2b851408e1eb5a144966fb300;
-
-    event MarketAdded(uint256 indexed id, uint256 timestamp);
-    event MarketResolved(uint256 indexed id, address indexed by, uint256 timestamp);
-    event BetPlaced(uint256 indexed marketId, address indexed better, bool isUp, uint256 amount);
-    event WinningsCollected(uint256 indexed marketId, address indexed winner, uint256 amount);
-    event BetReturned(uint256 indexed marketId, address indexed who, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -209,6 +173,48 @@ contract BetADay is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeabl
         require(price > 0, "Invalid price");
         require(block.timestamp - updatedAt < 2 hours, "Stale price");
         return price;
+    }
+
+    function getMarket(uint256 marketId) external view returns(
+        int256 createdPrice,
+        uint256 createdAt,
+        uint256 resolvesAt,
+        bool resolved,
+        address resolvedBy,
+        address conditionAsset,
+        int256 upConditionPercent,
+        uint256 upTotalBets,
+        uint256 downTotalBets,
+        bool upWins,
+        bool downWins,
+        uint256 resolverPayout,
+        uint256 housePayout
+    )
+    {
+        Market storage market = _appStorage().markets[marketId];
+
+        return (
+            market.createdPrice, 
+            market.createdAt, 
+            market.resolvesAt, 
+            market.resolved, 
+            market.resolvedBy, 
+            market.conditionAsset,
+            market.upConditionPercent, 
+            market.upTotalBets, 
+            market.downTotalBets, 
+            market.upWins, 
+            market.downWins, 
+            market.resolverPayout,
+            market.housePayout
+        );
+    }
+
+    function getUsersMarketBet(uint256 marketId, address user) external view returns(int256 amount)
+    {
+        Market storage market = _appStorage().markets[marketId];
+        
+        amount = market.userBets[user];
     }
 
     function isConditionalAssetSupported(address asset) public view returns(bool) {
