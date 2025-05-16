@@ -81,6 +81,7 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
         int256 currentPrice = getAssetPrice(market.conditionAsset);
         int256 percentMoved = _getPercentMoved(market.createdPrice, currentPrice);
         
+        market.resolvedPrice = currentPrice;
         market.upWins = percentMoved > market.conditionPercent;
         market.downWins = percentMoved < -market.conditionPercent;
         if(market.upWins || market.downWins)
@@ -88,10 +89,11 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
             uint256 totalLosingBets = market.upWins ? market.downTotalBets : market.upTotalBets;     
             market.resolverPayout = _payoutResolver(totalLosingBets);
             market.housePayout = _payoutHouse(totalLosingBets);
+
+            emit NoPayout(marketId, _msgSender(), block.timestamp);
         }
 
         market.resolved = true;
-        market.resolvedBy = _msgSender();
         market.resolvesAt = block.timestamp;
 
         emit MarketResolved(marketId, _msgSender(), block.timestamp);
@@ -117,7 +119,7 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
             market.userBets[_msgSender()].upBets += int256(amount);
         } else {
             market.downTotalBets += amount;
-            market.userBets[_msgSender()].downBets -= int256(amount);
+            market.userBets[_msgSender()].downBets += int256(amount);
         }
 
         emit BetPlaced(marketId, _msgSender(), isUpBet, amount);
@@ -181,7 +183,6 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
         uint256 createdAt,
         uint256 resolvesAt,
         bool resolved,
-        address resolvedBy,
         address conditionAsset,
         int256 upConditionPercent,
         uint256 upTotalBets,
@@ -189,7 +190,8 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
         bool upWins,
         bool downWins,
         uint256 resolverPayout,
-        uint256 housePayout
+        uint256 housePayout,
+        int256 resolvedPrice
     )
     {
         Market storage market = _appStorage().markets[marketId];
@@ -199,7 +201,6 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
             market.createdAt, 
             market.resolvesAt, 
             market.resolved, 
-            market.resolvedBy, 
             market.conditionAsset,
             market.conditionPercent, 
             market.upTotalBets, 
@@ -207,7 +208,8 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
             market.upWins, 
             market.downWins, 
             market.resolverPayout,
-            market.housePayout
+            market.housePayout,
+            market.resolvedPrice
         );
     }
 
@@ -227,6 +229,10 @@ contract BetADay is IBetADay, Initializable, OwnableUpgradeable, ReentrancyGuard
         require(asset != address(0), "Invalid asset");
         require(oracle != address(0), "Invalid oracle");
         _appStorage().supportedConditionalAssets[asset] = SupportedAsset(true, oracle);
+    }
+
+    function setHouseRakePercent(uint256 newRate) external onlyOwner {
+       _appStorage().houseRakePercent = newRate;
     }
 
     function _payoutResolver(uint256 totalLosers) internal returns(uint256) {

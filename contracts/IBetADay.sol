@@ -17,7 +17,6 @@ interface IBetADay{
         uint256 createdAt;
         uint256 resolvesAt;
         bool resolved;
-        address resolvedBy;
         address conditionAsset;
         int256 conditionPercent;
         uint256 upTotalBets;
@@ -26,6 +25,7 @@ interface IBetADay{
         bool downWins;
         uint256 resolverPayout;
         uint256 housePayout;
+        int256 resolvedPrice;
         mapping(address => Bet) userBets;
     }
 
@@ -51,6 +51,7 @@ interface IBetADay{
 
     event MarketAdded(uint256 indexed id, uint256 timestamp);
     event MarketResolved(uint256 indexed id, address indexed by, uint256 timestamp);
+    event NoPayout(uint256 indexed id, address indexed by, uint256 timestamp); 
     event BetPlaced(uint256 indexed marketId, address indexed better, bool isUp, uint256 amount);
     event WinningsCollected(uint256 indexed marketId, address indexed winner, uint256 amount);
     event BetReturned(uint256 indexed marketId, address indexed who, uint256 amount);
@@ -74,7 +75,6 @@ interface IBetADay{
         uint256 createdAt,
         uint256 resolvesAt,
         bool resolved,
-        address resolvedBy,
         address conditionAsset,
         int256 upConditionPercent,
         uint256 upTotalBets,
@@ -82,7 +82,8 @@ interface IBetADay{
         bool upWins,
         bool downWins,
         uint256 resolverPayout,
-        uint256 housePayout
+        uint256 housePayout,
+        int256 resolvedPrice
     );
     function isConditionalAssetSupported(address asset) external view returns(bool);
     function addConditionalSupportedAsset(address asset, address oracle) external;
